@@ -104,3 +104,9 @@ a3/
 
 # mypy
 .mypy_cache/
+
+# ignoring trained model, file too big
+*.caffemodel
+
+# vscode stuff
+.vscode/
