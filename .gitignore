@@ -110,3 +110,11 @@ a3/
 
 # vscode stuff
 .vscode/
+
+# data stuff
+*.txt
+*.binaryproto
+*.pickle
+
+# images
+images/
