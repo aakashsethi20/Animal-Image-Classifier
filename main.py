@@ -1,6 +1,7 @@
+import os, sys, subprocess, glob
+
 import numpy as np
 import matplotlib.pyplot as plt
-import os, sys, subprocess
 import caffe
 
 # set display defaults
@@ -43,36 +44,67 @@ transformer.set_mean('data', mu)                # subtract the dataset-mean valu
 transformer.set_raw_scale('data', 255)          # rescale from [0, 1] to [0, 255]
 transformer.set_channel_swap('data', (2,1,0))   # swap channels from RGB to BGR
 
+# Creating a list of images to be analyzed.
+# We will use python's glob library for this task
+# Some images are .jpeg and some are .jpg, so need to take care of both
+image_filenames = glob.glob('./images/*.jpeg') + glob.glob('./images/*.jpg')
+
 # set the size of the input
-net.blobs['data'].reshape(7,         # batch size
-                          3,         # 3-channel (BGR) images
-                          227, 227)  # image size is 640x668
+net.blobs['data'].reshape(len(image_filenames),         # batch size same as the number of images we have
+                          3,                            # 3-channel (BGR) images
+                          227, 227)                     # image size is 227x227
 
-image = caffe.io.load_image('./images/dog.jpeg')
-transformed_image = transformer.preprocess('data', image)
-plt.imshow(image)
+final_input = []
+final_output = []
+final_possible_classification = []
 
-# copy the image data into the memory allocated for the net
-net.blobs['data'].data[...] = transformed_image
+for image_filename in sorted(image_filenames):
+    image = caffe.io.load_image(image_filename)
+    transformed_image = transformer.preprocess('data', image)
+    plt.imshow(image)           # This doesn't actually prints the image but simply just draws it
 
-### perform classification
-output = net.forward()
+    # Adding image name to the final_input
+    final_input.append(image_filename.split('/')[2])
 
-output_prob = output['prob'][0]  # the output probability vector for the first image in the batch
+    # copy the image data into the memory allocated for the net
+    net.blobs['data'].data[...] = transformed_image
 
-print ('predicted class is:', output_prob.argmax())
+    # perform classification
+    output = net.forward()
 
-# load ImageNet labels
-labels_file = './data/ilsvrc12/synset_words.txt'
-if not os.path.exists(labels_file):
-    subprocess.call(['./data/ilsvrc12/get_ilsvrc_aux.sh'])
+    output_prob = output['prob'][0]  # the output probability vector for the first image in the batch
+
+    print ('predicted class is:', output_prob.argmax())
+
+    # load ImageNet labels
+    labels_file = './data/ilsvrc12/synset_words.txt'
+    if not os.path.exists(labels_file):
+        subprocess.call(['./data/ilsvrc12/get_ilsvrc_aux.sh'])
+        
+    labels = np.loadtxt(labels_file, str, delimiter='\t')
+
+    print ('output label:', labels[output_prob.argmax()])
+
+    final_possible_classification.append(' '.join(labels[output_prob.argmax()].split()[1:])[:-1])
+
+    # sort top five predictions from softmax output
+    top_inds = output_prob.argsort()[::-1][:5]  # reverse sort and take five largest items
+
+    print ('probabilities and labels:')
+    print (list(zip(output_prob[top_inds], labels[top_inds])))
+    final_output.append(list(zip(output_prob[top_inds], labels[top_inds])))
+
+# clear the terminal using the bash command
+bash_command_clear = 'clear'
+process = subprocess.call(bash_command_clear.split())
+
+for result in zip(final_input, final_output, final_possible_classification):
+    current_row = tuple(result)
+
+    print ('Input: ' + str(current_row[0]))
+
+    print ('Label\t\t\tProbability')
+    for prob, label in current_row[1]:
+        print(' '.join(label.split()[1:])[:-1].split(',')[0]+'\t\t\t'+str(prob))
     
-labels = np.loadtxt(labels_file, str, delimiter='\t')
-
-print ('output label:', labels[output_prob.argmax()])
-
-# sort top five predictions from softmax output
-top_inds = output_prob.argsort()[::-1][:5]  # reverse sort and take five largest items
-
-print ('probabilities and labels:')
-print (list(zip(output_prob[top_inds], labels[top_inds])))
+    print('Output: It is a ' + str(current_row[2])+ '\n\n')
