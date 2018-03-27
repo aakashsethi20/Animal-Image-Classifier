@@ -47,6 +47,8 @@ transformer.set_channel_swap('data', (2,1,0))   # swap channels from RGB to BGR
 # Creating a list of images to be analyzed.
 # We will use python's glob library for this task
 # Some images are .jpeg and some are .jpg, so need to take care of both
+# Assuming that all images are either .jpg or .jpeg. But it is simple to
+# extend this functionality to other extensions too.
 image_filenames = glob.glob('./images/*.jpeg') + glob.glob('./images/*.jpg')
 
 # set the size of the input
@@ -54,12 +56,17 @@ net.blobs['data'].reshape(len(image_filenames),         # batch size same as the
                           3,                            # 3-channel (BGR) images
                           227, 227)                     # image size is 227x227
 
+# The final_<something> lists declared under will contain the input
+# and the output in a nice format for us to display on the console at 
+# the end of the program
 final_input = []
 final_output = []
 final_possible_classification = []
 
+# This loop will go through each image, process it
+# and save the output in our lists declared above
 for image_filename in sorted(image_filenames):
-    image = caffe.io.load_image(image_filename)
+    image = caffe.io.load_image(image_filename)         # inputting the image to caffe
     transformed_image = transformer.preprocess('data', image)
     plt.imshow(image)           # This doesn't actually prints the image but simply just draws it
 
@@ -74,8 +81,6 @@ for image_filename in sorted(image_filenames):
 
     output_prob = output['prob'][0]  # the output probability vector for the first image in the batch
 
-    print ('predicted class is:', output_prob.argmax())
-
     # load ImageNet labels
     labels_file = './data/ilsvrc12/synset_words.txt'
     if not os.path.exists(labels_file):
@@ -83,28 +88,30 @@ for image_filename in sorted(image_filenames):
         
     labels = np.loadtxt(labels_file, str, delimiter='\t')
 
-    print ('output label:', labels[output_prob.argmax()])
-
+    # Adding the most probable classification to the appropriate list
     final_possible_classification.append(' '.join(labels[output_prob.argmax()].split()[1:])[:-1])
 
     # sort top five predictions from softmax output
     top_inds = output_prob.argsort()[::-1][:5]  # reverse sort and take five largest items
 
-    print ('probabilities and labels:')
-    print (list(zip(output_prob[top_inds], labels[top_inds])))
+    # Adding the whole processing result to the appropriate list to display later
     final_output.append(list(zip(output_prob[top_inds], labels[top_inds])))
 
 # clear the terminal using the bash command
 bash_command_clear = 'clear'
 process = subprocess.call(bash_command_clear.split())
 
+# This loop is to print out the whole analysis in a nice format
 for result in zip(final_input, final_output, final_possible_classification):
     current_row = tuple(result)
 
+    # Prints out the image name
     print ('Input: ' + str(current_row[0]))
 
     print ('Label\t\t\tProbability')
     for prob, label in current_row[1]:
+        # This line might seem complicated but it's to diplay results nicely
         print(' '.join(label.split()[1:])[:-1].split(',')[0]+'\t\t\t'+str(prob))
     
+    # Print the most probable classification
     print('Output: It is a ' + str(current_row[2])+ '\n\n')
