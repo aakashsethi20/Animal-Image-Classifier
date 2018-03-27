@@ -115,6 +115,3 @@ a3/
 *.txt
 *.binaryproto
 *.pickle
-
-# images
-images/
