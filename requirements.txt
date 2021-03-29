@@ -48,7 +48,7 @@ prompt-toolkit==1.0.14
 protobuf==3.0.0
 pycrypto==2.6.1
 pycups==1.9.73
-Pygments==2.2.0
+Pygments==2.7.4
 pygobject==3.24.1
 pylint==1.8.3
 pyparsing==2.1.10
